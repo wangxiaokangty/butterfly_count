@@ -10,6 +10,7 @@ private:
     std::uniform_real_distribution<double> real_distribution; // 实数均匀分布
 
 public:
+    RandomRange();
     RandomRange(int low, int high); // 整数构造函数
     RandomRange(double low, double high); // 实数构造函数
 

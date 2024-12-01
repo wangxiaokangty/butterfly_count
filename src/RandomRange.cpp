@@ -1,5 +1,7 @@
 #include "RandomRange.h"
 
+RandomRange::RandomRange(){}
+
 // 整数范围构造函数
 RandomRange::RandomRange(int low, int high) 
     : generator(std::random_device{}()), 

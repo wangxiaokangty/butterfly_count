@@ -9,6 +9,7 @@
 #include <sstream>
 #include <vector>
 #include <chrono>
+#include <filesystem>
 
 
 
@@ -120,50 +121,68 @@ void BiGraph::tls_setup(){
 }
 
 
-
-BiGraph::BiGraph(std::unordered_map<std::string, std::string> config):edge_sampler(1, 2)
-{
-    std::ifstream ifs(config["data_path"]);
-    std::string line;
-    // ignore the first line
-    std::getline(ifs,line);
-    std::getline(ifs,line);
-    std::istringstream iss(line);
-    char tmp;
-    iss>>tmp>>m>>n_left>>n_right; n=n_left+n_right;
-    edge_sampler = RandomRange(0,2*m-1);
-    
-    from_vertexes.resize(2*m+2);
-    to_vertexes.resize(2*m+2);
-    adj.resize(n+2);
-
-    int edge_count=0;
-    while (std::getline(ifs,line)) {
+void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
+    std::filesystem::path serialize_path = config["serialize_path"];
+    DataStream ds;
+    if (!std::filesystem::exists(serialize_path)){
+        std::ifstream ifs(config["data_path"]);
+        std::string line;
+        // ignore the first line
+        std::getline(ifs,line);
+        std::getline(ifs,line);
         std::istringstream iss(line);
-        int a,b;
-        iss>>a>>b; b+=n_left;
-        from_vertexes[edge_count]=a;to_vertexes[edge_count++]=b;
-        from_vertexes[edge_count]=b;to_vertexes[edge_count++]=a;
-        adj[a].push_back(b);
-        adj[b].push_back(a);       
+        char tmp;
+        iss>>tmp>>m>>n_left>>n_right; n=n_left+n_right;
+        from_vertexes.resize(2*m+2);
+        to_vertexes.resize(2*m+2);
+        adj.resize(n+2);
 
-        is_edge.insert({a,b});
-        is_edge.insert({b,a});
+        int edge_count=0;
+        while (std::getline(ifs,line)) {
+            std::istringstream iss(line);
+            int a,b;
+            iss>>a>>b; b+=n_left;
+            from_vertexes[edge_count]=a;to_vertexes[edge_count++]=b;
+            from_vertexes[edge_count]=b;to_vertexes[edge_count++]=a;
+            adj[a].push_back(b);
+            adj[b].push_back(a);       
+        }
 
-    }
+        // compute degs of all vertex
+        vertex_degs.push_back(0);
+        for(int vertex=1;vertex<=n;vertex++){
+            vertex_degs.push_back(adj[vertex].size());
+        }
 
-    // compute degs of all vertex
-    vertex_degs.push_back(0);
-    for(int vertex=1;vertex<=n;vertex++){
-        vertex_degs.push_back(adj[vertex].size());
-    }
+        // compute degs of all edges
+        for(int edge=0;edge<2*m;edge++){
+            int edge_deg = vertex_degs[to_vertexes[edge]] + vertex_degs[from_vertexes[edge]];
+            edge_degs.push_back(edge_deg);
+        }
 
-    // compute degs of all edges
-    for(int edge=0;edge<2*m;edge++){
-        int edge_deg = vertex_degs[to_vertexes[edge]] + vertex_degs[from_vertexes[edge]];
-        edge_degs.push_back(edge_deg);
+        ds << *this;
+        ds.save(config["serialize_path"]);
+    }else {
+        ds.load(config["serialize_path"]);
+        ds >> *this;
     }
 }
+
+
+// read graph from raw_data
+BiGraph::BiGraph(std::unordered_map<std::string, std::string> config)
+{
+    read_raw(config);
+    edge_sampler = RandomRange(0,m-1);
+    for(int vertex=1;vertex<=n;vertex++){
+        for (auto neighbor : adj[vertex]){
+            is_edge.insert({vertex,neighbor});
+        }
+    }
+    
+}
+
+BiGraph::BiGraph(){}
 
 void BiGraph::displayAdjMatrix() const {
     std::cout << "adjcent matrix:" << std::endl;

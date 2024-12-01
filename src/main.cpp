@@ -1,17 +1,18 @@
 #include <fstream>
-#include <iostream>
+#include <iterator>
 #include <ostream>
 #include <sstream>
 #include <string>
 #include <unordered_map>
 #include <cstdlib>
-
+#include <iostream>
 
 #include "BiGraph.h"
 
+
 // use an unorder map to store run time config
 // pay attention to that every key & value is a string
-const std::unordered_map<std::string, std::string> readConfigFile(const std::string& filePath) {
+std::unordered_map<std::string, std::string> readConfigFile(const std::string& filePath) {
     std::unordered_map<std::string, std::string> config;
     std::ifstream infile(filePath);
     std::string line;
@@ -37,23 +38,16 @@ const std::unordered_map<std::string, std::string> readConfigFile(const std::str
 
 
 int main() {
+    std::ios::sync_with_stdio(false);
     const std::string configFilePath = "config.cfg";
-    const auto config = readConfigFile(configFilePath);
+    auto config = readConfigFile(configFilePath);
 
-
-    BiGraph graph(config);
-    // graph.displayAdjMatrix();
-
-
+    BiGraph g(config);
+    
+    std::cout<<"read file finsh"<<std::endl;
     for(int i=0;i<10;i++){
-        std::cout<<graph.tls_estimate(2)<<std::endl;
+        std::cout << g.tls_estimate(2)<<std::endl;
     }
-
-
-    // 生成一些随机整数
-    // for (int i = 0; i < 100; ++i) {
-    //     std::cout << "Random number: " << range.getRandom() << std::endl;
-    // }
 
     return 0;
 }

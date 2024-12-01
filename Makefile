@@ -1,5 +1,5 @@
 CXX = g++
-CXXFLAGS = -std=c++11 -O0 -g -Wall -Iinclude
+CXXFLAGS = -std=c++17 -O0 -g -Wall -Iinclude
 TARGET = program
 SRC_DIR = src
 OBJ_DIR = obj
