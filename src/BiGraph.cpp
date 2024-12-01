@@ -11,6 +11,7 @@
 #include <chrono>
 #include <filesystem>
 
+extern std::unordered_map<std::string, std::string> data_config;
 
 
 
@@ -100,7 +101,6 @@ double BiGraph::estimate_random_te(){
     }
 }
 
-
 double BiGraph::tls_estimate(int time_limit_seconds){
     auto start_time = std::chrono::high_resolution_clock::now();
     auto time_limit = std::chrono::seconds(time_limit_seconds);
@@ -120,19 +120,22 @@ void BiGraph::tls_setup(){
     sqrt_m = sqrt(static_cast<double>(m));
 }
 
-
 void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
     std::filesystem::path serialize_path = config["serialize_path"];
     DataStream ds;
     if (!std::filesystem::exists(serialize_path)){
         std::ifstream ifs(config["data_path"]);
         std::string line;
-        // ignore the first line
-        std::getline(ifs,line);
-        std::getline(ifs,line);
-        std::istringstream iss(line);
-        char tmp;
-        iss>>tmp>>m>>n_left>>n_right; n=n_left+n_right;
+
+        while (std::getline(ifs,line)) {
+            if (line[0] != '%') break;
+        }
+
+        this->m = stoi(data_config["m"]);
+        this->n_left = stoi(data_config["n_left"]);
+        this->n_right = stoi(data_config["n_right"]);
+        this->n = stoi(data_config["n"]);
+
         from_vertexes.resize(2*m+2);
         to_vertexes.resize(2*m+2);
         adj.resize(n+2);
@@ -170,8 +173,7 @@ void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
 
 
 // read graph from raw_data
-BiGraph::BiGraph(std::unordered_map<std::string, std::string> config)
-{
+BiGraph::BiGraph(std::unordered_map<std::string, std::string> config){
     read_raw(config);
     edge_sampler = RandomRange(0,m-1);
     for(int vertex=1;vertex<=n;vertex++){
