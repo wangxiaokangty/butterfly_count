@@ -4,6 +4,7 @@
 #include <cmath>
 #include <fstream>
 #include <iostream>
+#include <iterator>
 #include <ostream>
 #include <string>
 #include <sstream>
@@ -16,9 +17,8 @@ extern std::unordered_map<std::string, std::string> data_config;
 
 
 double BiGraph::estimate_random_te(){
-    tls_setup();
     int random_edge =  edge_sampler.getRandomInt();
-    // int random_edge = edge;
+    // int random_edge = 1;
     int left_node=from_vertexes[random_edge],right_node=to_vertexes[random_edge];
     int left_node_deg = vertex_degs[left_node],right_node_deg = vertex_degs[right_node];
     if (left_node_deg<2||right_node_deg<2){
@@ -40,7 +40,7 @@ double BiGraph::estimate_random_te(){
         int iterate_num;
         if(vertex_degs[new_node]<sqrt_m){
             RandomRange real_sampler{0.0,1.0};
-            if(real_sampler.getRandomReal() > static_cast<double>(vertex_degs[new_node])/sqrt_m){
+            if(real_sampler.getRandomReal() < static_cast<double>(vertex_degs[new_node])/sqrt_m){
                 iterate_num = 1;
             }else {
                 return 0;
@@ -56,12 +56,12 @@ double BiGraph::estimate_random_te(){
         for(int i=0;i<iterate_num;i++){
             double result = 0;
             if ( (fourth_node<new_node) && (fourth_node!=left_node) && (is_edge.find({fourth_node,right_node})!=is_edge.end())){
-                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m);
+                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m)*0.25;
             }
             results.push_back(result);
         } 
         double sum = static_cast<double>(std::accumulate(results.begin(), results.end(), 0.0));
-        return sum*bias/iterate_num;
+        return sum*edge_degs[random_edge]/iterate_num;
     }else {
         // right_node in a side , the others in another side
         int new_node = adj[right_node][wedge_random-left_node_deg];
@@ -76,7 +76,7 @@ double BiGraph::estimate_random_te(){
         int iterate_num;
         if(vertex_degs[new_node]<sqrt_m){
             RandomRange real_sampler{0.0,1.0};
-            if(real_sampler.getRandomReal() > static_cast<double>(vertex_degs[new_node])/sqrt_m){
+            if(real_sampler.getRandomReal() < static_cast<double>(vertex_degs[new_node])/sqrt_m){
                 iterate_num = 1;
             }else {
                 return 0;
@@ -92,16 +92,17 @@ double BiGraph::estimate_random_te(){
         for(int i=0;i<iterate_num;i++){
             double result = 0;
             if ( (fourth_node<new_node) && (fourth_node!=right_node) && (is_edge.find({fourth_node,left_node})!=is_edge.end())){
-                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m);
+                result = std::max(static_cast<double>(vertex_degs[new_node]),sqrt_m)*0.25;
             }
             results.push_back(result);
         } 
         double sum = static_cast<double>(std::accumulate(results.begin(), results.end(), 0.0));
-        return sum*bias/iterate_num;
+        return sum*edge_degs[random_edge]/iterate_num;
     }
 }
 
 double BiGraph::tls_estimate(int time_limit_seconds){
+    tls_setup();
     auto start_time = std::chrono::high_resolution_clock::now();
     auto time_limit = std::chrono::seconds(time_limit_seconds);
     std::vector<double> results;
@@ -113,7 +114,9 @@ double BiGraph::tls_estimate(int time_limit_seconds){
         results.push_back(estimate_random_te());
     }
 
-    return std::accumulate(results.begin(), results.end(), 0.0)*m/results.size();
+    double edge_average = std::accumulate(results.begin(), results.end(), 0.0)/results.size();
+    // return edge_average*m;
+    return edge_average*m;
 }
 
 void BiGraph::tls_setup(){
@@ -141,7 +144,7 @@ void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
         adj.resize(n+2);
 
         int edge_count=0;
-        while (std::getline(ifs,line)) {
+        do {
             std::istringstream iss(line);
             int a,b;
             iss>>a>>b; b+=n_left;
@@ -149,7 +152,7 @@ void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
             from_vertexes[edge_count]=b;to_vertexes[edge_count++]=a;
             adj[a].push_back(b);
             adj[b].push_back(a);       
-        }
+        } while (std::getline(ifs,line));
 
         // compute degs of all vertex
         vertex_degs.push_back(0);
@@ -163,8 +166,8 @@ void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
             edge_degs.push_back(edge_deg);
         }
 
-        ds << *this;
-        ds.save(config["serialize_path"]);
+        // ds << *this;
+        // ds.save(config["serialize_path"]);
     }else {
         ds.load(config["serialize_path"]);
         ds >> *this;
@@ -175,7 +178,7 @@ void BiGraph::read_raw(std::unordered_map<std::string, std::string> config){
 // read graph from raw_data
 BiGraph::BiGraph(std::unordered_map<std::string, std::string> config){
     read_raw(config);
-    edge_sampler = RandomRange(0,m-1);
+    edge_sampler = RandomRange(0,2*m-1);
     for(int vertex=1;vertex<=n;vertex++){
         for (auto neighbor : adj[vertex]){
             is_edge.insert({vertex,neighbor});

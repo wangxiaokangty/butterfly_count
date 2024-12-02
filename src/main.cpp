@@ -1,4 +1,5 @@
 #include <fstream>
+#include <iterator>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -69,6 +70,10 @@ int main() {
     data_config = readDataConfigFile(config["data_config_path"]);
 
     BiGraph g(config);
+
+    for (int i=0;i<10;i++){
+        std::cout << g.tls_estimate(2)<<std::endl;
+    }
     
 
     // BiGraph g(config);
